@@ -36,9 +36,9 @@ TMP_YAML="$LOGS_DIR/${SERVER_ALIAS}.yml"
 # ----------------------------
 ssh "$SERVER" "test -f ~/logpath.yml"
 if [[ $? -ne 0 ]]; then
-  echo "logpath.yml не найден на сервере. Загружаем logfinder.sh и запускаем..."
-  scp ./server/logfinder.sh "$SERVER:~/logfinder.sh"
-  ssh "$SERVER" "chmod +x ~/logfinder.sh && ~/logfinder.sh"
+  echo "logpath.yml не найден на сервере. Запускаем logfinder.sh на сервере..."
+  # Передаем содержимое скрипта через stdin в SSH
+  ssh "$SERVER" 'bash -s' < ./server/logfinder.sh
 fi
 
 # ----------------------------
