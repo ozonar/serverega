@@ -80,7 +80,8 @@ fi
 SELECTED_LOG="${LOGS[$((IDX-1))]}"
 
 # ----------------------------
-# 5. Открываем выбранный лог через lnav на сервере
+# 5. Открываем выбранный лог через lnav локально с доступом по SSH
 # ----------------------------
-echo "Открываем $SELECTED_LOG на сервере $SERVER через lnav..."
-ssh -t "$SERVER" "lnav '$SELECTED_LOG'"
+echo "Открываем $SELECTED_LOG на сервере $SERVER через lnav локально..."
+#ssh -t "$SERVER" "lnav '$SELECTED_LOG'"
+lnav "$SERVER:$SELECTED_LOG"
