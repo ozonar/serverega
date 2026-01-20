@@ -21,7 +21,6 @@ if [[ -f "$ALIAS_FILE" ]] && grep -q "^$ARG:" "$ALIAS_FILE"; then
   
   # Получаем дополнительные папки для поиска
   FOLDERS=$(awk "/^$ARG:/ {for(i=1;i<=NF;i++) if(\$i == \"--folders\") {for(j=i+1; j<=NF && \$j !~ /^--/; j++) printf \"%s \", \$j; print \"\"; break}}" "$ALIAS_FILE" | sed 's/"//g' | sed 's/ *$//')
-  echo "FOLDERS=$FOLDERS"
 else
   # Считаем, что передан полный адрес user@server
   SERVER="$ARG"
@@ -64,23 +63,22 @@ if [[ ${#LOGS[@]} -eq 0 ]]; then
   exit 1
 fi
 
-# Выводим список с номерами
-echo "Список логов:"
-for i in "${!LOGS[@]}"; do
-  echo "$((i+1))) ${LOGS[$i]}"
-done
-
 # ----------------------------
 # 4. Выбор лога пользователем
 # ----------------------------
-read -rp "Введите номер лога для просмотра: " IDX
+# Импортируем функцию интерактивного выбора
+source ./data/log_selector.sh
 
-if ! [[ "$IDX" =~ ^[0-9]+$ ]] || (( IDX < 1 || IDX > ${#LOGS[@]} )); then
-  echo "Неверный номер"
-  exit 1
-fi
+# Создаем массив для меню
+MENU_ITEMS=()
+for log in "${LOGS[@]}"; do
+  MENU_ITEMS+=("$log")
+done
 
-SELECTED_LOG="${LOGS[$((IDX-1))]}"
+# Показываем интерактивное меню
+select_log "${MENU_ITEMS[@]}"
+SELECTED_INDEX=$?
+SELECTED_LOG="${LOGS[$SELECTED_INDEX]}"
 
 # ----------------------------
 # 5. Открываем выбранный лог через lnav локально с доступом по SSH
@@ -88,4 +86,5 @@ SELECTED_LOG="${LOGS[$((IDX-1))]}"
 echo "Открываем $SELECTED_LOG на сервере $SERVER через lnav локально..."
 #ssh -t "$SERVER" "lnav '$SELECTED_LOG'"
 lnav "$SERVER:$SELECTED_LOG"
+
 
