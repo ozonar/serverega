@@ -16,12 +16,17 @@ fi
 # ----------------------------
 if [[ -f "$ALIAS_FILE" ]] && grep -q "^$ARG:" "$ALIAS_FILE"; then
   # Алиас найден
-  SERVER=$(grep -E "^$ARG:" "$ALIAS_FILE" | awk -F": " '{print $2}')
+  SERVER=$(awk -F": " "/^$ARG:/ {print \$2}" "$ALIAS_FILE" | awk '{print $1}')
   SERVER_ALIAS="$ARG"
+  
+  # Получаем дополнительные папки для поиска
+  FOLDERS=$(awk "/^$ARG:/ {for(i=1;i<=NF;i++) if(\$i == \"--folders\") {for(j=i+1; j<=NF && \$j !~ /^--/; j++) printf \"%s \", \$j; print \"\"; break}}" "$ALIAS_FILE" | sed 's/"//g' | sed 's/ *$//')
+  echo "FOLDERS=$FOLDERS"
 else
   # Считаем, что передан полный адрес user@server
   SERVER="$ARG"
   SERVER_ALIAS=$(echo "$SERVER" | sed 's/[@.]/_/g')
+  FOLDERS=""
 fi
 
 # Создаем папку logs если её нет
@@ -34,27 +39,25 @@ TMP_YAML="$LOGS_DIR/${SERVER_ALIAS}.yml"
 # ----------------------------
 # 1. Проверка logpath.yml на сервере
 # ----------------------------
-ssh "$SERVER" "test -f ~/logpath.yml"
-if [[ $? -ne 0 ]]; then
-  echo "logpath.yml не найден на сервере. Запускаем logfinder.sh на сервере..."
-  # Передаем содержимое скрипта через stdin в SSH
-  ssh "$SERVER" 'bash -s' < ./server/logfinder.sh
-fi
+# Запускаем logfinder.sh на сервере и получаем результат сразу в переменную
+echo "Запускаем logfinder.sh на сервере..."
+LOGFINDER_OUTPUT=$(ssh "$SERVER" "FOLDERS='$FOLDERS' bash -s" < ./server/logfinder.sh)
 
-# ----------------------------
-# 2. Скачиваем logpath.yml
-# ----------------------------
-scp "$SERVER:~/logpath.yml" "$TMP_YAML"
-if [[ $? -ne 0 ]]; then
-  echo "Ошибка: не удалось скачать logpath.yml с сервера $SERVER"
+# Сохраняем результат в временный файл
+echo "$LOGFINDER_OUTPUT" > "$TMP_YAML"
+echo "Файл сохранен как $TMP_YAML"
+
+# Проверяем, что файл не пустой
+if [[ ! -s "$TMP_YAML" ]]; then
+  echo "Ошибка: не удалось получить список логов с сервера $SERVER"
   exit 1
 fi
-echo "Файл скачан как $TMP_YAML"
+
 
 # ----------------------------
 # 3. Собираем список логов
 # ----------------------------
-LOGS=($(grep -oP '^\s*-\s*\K.+' "$TMP_YAML"))
+LOGS=($(grep -oP '^\s*-\s*\K.+' "$TMP_YAML" | sort -u))
 
 if [[ ${#LOGS[@]} -eq 0 ]]; then
   echo "Логи не найдены в $TMP_YAML"
@@ -85,3 +88,4 @@ SELECTED_LOG="${LOGS[$((IDX-1))]}"
 echo "Открываем $SELECTED_LOG на сервере $SERVER через lnav локально..."
 #ssh -t "$SERVER" "lnav '$SELECTED_LOG'"
 lnav "$SERVER:$SELECTED_LOG"
+
