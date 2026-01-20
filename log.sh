@@ -66,19 +66,26 @@ fi
 # ----------------------------
 # 4. Выбор лога пользователем
 # ----------------------------
-# Импортируем функцию интерактивного выбора
-source ./data/log_selector.sh
-
-# Создаем массив для меню
-MENU_ITEMS=()
-for log in "${LOGS[@]}"; do
-  MENU_ITEMS+=("$log")
+# Показываем нумерованный список логов
+echo "Выберите лог:"
+for i in "${!LOGS[@]}"; do
+  echo "$((i+1)). ${LOGS[i]}"
 done
 
-# Показываем интерактивное меню
-select_log "${MENU_ITEMS[@]}"
-SELECTED_INDEX=$?
-SELECTED_LOG="${LOGS[$SELECTED_INDEX]}"
+# Получаем выбор пользователя
+while true; do
+  echo -n "Введите номер лога (1-${#LOGS[@]}): "
+  read -r choice
+  
+  # Проверяем, что введено число в диапазоне
+  if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#LOGS[@]}" ]; then
+    SELECTED_INDEX=$((choice-1))
+    SELECTED_LOG="${LOGS[$SELECTED_INDEX]}"
+    break
+  else
+    echo "Неверный ввод. Пожалуйста, введите число от 1 до ${#LOGS[@]}."
+  fi
+done
 
 # ----------------------------
 # 5. Открываем выбранный лог через lnav локально с доступом по SSH
